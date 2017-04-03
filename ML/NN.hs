@@ -52,9 +52,9 @@ sdg eps step network dataset = loop step network
                                               loop (n - 1) (zipWith (-) network (map (layerMap (*eps)) (backpropagation network (dataset !! fromIntegral rand))) )
                              | otherwise = return network
 -}
-sdg eps samples network dataset = foldl' (\net sample -> zipWith (-) net 
+sdg eps samples network = foldl' (\net sample -> zipWith (-) net 
         $ map (layerMap (*eps)) 
-        $ backpropagation net $ dataset !! sample) network samples
+        $ backpropagation net sample) network samples
 {-
 sdg eps samples network dataset = execState 
     (mapM_ (\sample -> 
