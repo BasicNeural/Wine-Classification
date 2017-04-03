@@ -9,8 +9,9 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 
 makeRand x = replicate x $ randomRIO (0.0, 1.0)
 
-rank x = snd $ maximum r
-    where r = zip (M.toList x) [1.. length x]
+oneShot x = fromList len 1 $ replicate r 0 ++ [1] ++ iterate (\x -> x) 0
+    where r = snd . maximum $ zip (toList x) [0 .. length x - 1]
+          len = length x
 
 main = do
     rawdata <- fmap BS.lines $ BS.readFile ".\\resource\\wine_train.csv"
@@ -30,9 +31,7 @@ main = do
     let h2 = (Layer sigmoid s2 b2)
     let dataset = zip x y
 
-    putStrLn "Start!"
-    
-    samplesindex <- sequence . replicate 20000 $ randomRIO (0, length dataset - 1)
+    samplesindex <- sequence . replicate 200000 $ randomRIO (0, length dataset - 1)
 
     let samples = map (\x -> dataset !! x) samplesindex
 
@@ -40,9 +39,15 @@ main = do
 
     testdata <- fmap BS.lines $ BS.readFile ".\\resource\\wine_test.csv"
 
-    let testSet = map (map (\x -> read x :: Float) . map BS.unpack . BS.split ',') rawdata
+    let testSet = map (map (\x -> read x :: Float) . map BS.unpack . BS.split ',') testdata
 
     let testX = map (transpose . fromLists . (:[]) . take 13) testSet
     let testY = map (transpose . fromLists . (:[]) . drop 13) testSet
 
-    
+    putStr "테스트 오차율 : "
+
+    putStr . show . (*100) . (/ fromIntegral (length testY)) . sum
+           . map (\x -> if x then 0 else 1)
+           . zipWith (==) testY $ map (oneShot . executeLayer result) testX
+
+    putStrLn "%"
