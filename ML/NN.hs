@@ -3,9 +3,8 @@ module ML.NN where
 import Data.Matrix
 import ML.Derive
 import Data.List (foldl')
-import Control.Monad.State
 
-
+-- 네트워크의 레이어를 정의
 data Layer = Layer (Float -> Float) (Matrix Float) (Matrix Float)
 
 instance Show Layer where
@@ -22,21 +21,24 @@ instance Num Layer where
 
 type Network = [Layer]
 
+-- 뉴런 네트워크 map 함수
 layerMap f (Layer active synapse bias) = (Layer active (fmap f synapse) (fmap f bias))
 
-toScalar = head . toList
-
+-- 뉴런 네트워크 순전파 함수
 execute input (Layer active synapse bias) = fmap active $ synapse * input + bias
 
 executeLayer []      input = input
 executeLayer network input = foldl' execute input network
 
+-- 활성화 함수
 sigmoid x = 1 / (1 + exp (-x))
 
 reLU x = max 0 x
 
+-- 로지스틱 함수
 logistic d y = - d * log y - (1 - d) * log y
 
+-- 역전파 미분 함수
 backpropagation network (x, y) = reverse . backpro (reverse network) inputs $ executeLayer network x - y
     where inputs = foldl' (\x layer -> execute (head x) layer : x ) [x] $ init network
           backpro  ((Layer active synapse bias):layers) (input:inputs) delta = 
@@ -52,6 +54,7 @@ sdg eps step network dataset = loop step network
                                               loop (n - 1) (zipWith (-) network (map (layerMap (*eps)) (backpropagation network (dataset !! fromIntegral rand))) )
                              | otherwise = return network
 -}
+-- 확률적 경사 하강 함수
 sdg eps samples network = foldl' (\net sample -> zipWith (-) net 
         $ map (layerMap (*eps)) 
         $ backpropagation net sample) network samples

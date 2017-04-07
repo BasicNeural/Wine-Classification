@@ -7,8 +7,10 @@ import qualified Data.Sequence              as S
 import qualified Data.Foldable              as F
 import qualified Data.ByteString.Lazy.Char8 as BS
 
+-- 랜덤 값 생성
 makeRand x = replicate x $ randomRIO (0.0, 1.0)
 
+-- 행렬을 받아 가장 큰 값만 1로 만들고 나머지를 0으로 만드는 함수
 oneShot x = fromList len 1 $ replicate r 0 ++ [1] ++ iterate (\x -> x) 0
     where r = snd . maximum $ zip (toList x) [0 .. length x - 1]
           len = length x
