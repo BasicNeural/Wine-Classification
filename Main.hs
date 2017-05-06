@@ -16,13 +16,18 @@ oneShot x = fromList len 1 $ replicate r 0 ++ [1] ++ iterate (\x -> x) 0
           len = length x
 
 main = do
+    -- 학습용 데이터를 불러옴
     rawdata <- fmap BS.lines $ BS.readFile ".\\resource\\wine_train.csv"
 
     let set = map (map (\x -> read x :: Float) . map BS.unpack . BS.split ',') rawdata
-
+    
+    -- 입력 리스트
     let x = map (transpose . fromLists . (:[]) . take 13) set
+    
+    -- 목표출력 리스트
     let y = map (transpose . fromLists . (:[]) . drop 13) set
 
+    -- 뉴런 네트워크 생성
     seed1 <- sequence $ makeRand 52
     seed2 <- sequence $ makeRand 12
     let s1 = fromList 4 13 seed1
@@ -33,17 +38,23 @@ main = do
     let h2 = (Layer sigmoid s2 b2)
     let dataset = zip x y
 
-    samplesindex <- sequence . replicate 200000 $ randomRIO (0, length dataset - 1)
+    -- 랜덤하게 샘플 선정
+    samplesindex <- sequence . replicate 80000 $ randomRIO (0, length dataset - 1)
 
+    -- 샘플 데이터 리스트 생성
     let samples = map (\x -> dataset !! x) samplesindex
 
+    -- 확률적 경사 하강법으로 학습
     let result = sdg 0.1 samples [h1,h2]
 
+    -- 테스트용 데이터를 불러옴
     testdata <- fmap BS.lines $ BS.readFile ".\\resource\\wine_test.csv"
 
     let testSet = map (map (\x -> read x :: Float) . map BS.unpack . BS.split ',') testdata
 
+    -- 입력 리스트
     let testX = map (transpose . fromLists . (:[]) . take 13) testSet
+    -- 목표 출력 리스트
     let testY = map (transpose . fromLists . (:[]) . drop 13) testSet
 
     putStr "테스트 오차율 : "

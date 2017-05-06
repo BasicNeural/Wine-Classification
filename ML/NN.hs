@@ -2,7 +2,7 @@ module ML.NN where
 
 import Data.Matrix
 import ML.Derive
-import Data.List (foldl')
+import Data.Foldable (foldl')
 
 -- 네트워크의 레이어를 정의
 data Layer = Layer (Float -> Float) (Matrix Float) (Matrix Float)
@@ -33,10 +33,8 @@ executeLayer network input = foldl' execute input network
 -- 활성화 함수
 sigmoid x = 1 / (1 + exp (-x))
 
-reLU x = max 0 x
-
 -- 로지스틱 함수
-logistic d y = - d * log y - (1 - d) * log y
+logistic d y = - d * log y - (1 - d) * log (1 - y)
 
 -- 역전파 미분 함수
 backpropagation network (x, y) = reverse . backpro (reverse network) inputs $ executeLayer network x - y
@@ -45,23 +43,11 @@ backpropagation network (x, y) = reverse . backpro (reverse network) inputs $ ex
                        (Layer active (delta * transpose input) delta) : backpro' layers inputs (transpose synapse * delta)
           backpro' []                                   _              _     = []
           backpro' ((Layer active synapse bias):layers) (input:inputs) delta = 
-                       (Layer active (newDelta * transpose input) newDelta) : backpro' layers inputs (transpose synapse * newDelta)
+                    (Layer active (newDelta * transpose input) newDelta) : backpro' layers inputs (transpose synapse * newDelta)
               where newDelta = fromLists . map (:[]) . zipWith (*) (toList delta)
                                $ toList (fmap (derive active) $ synapse * input + bias)
-{-
-sdg eps step network dataset = loop step network
-        where loop n network | n /= 0    = do rand <- randomRIO (0, length dataset - 1)
-                                              loop (n - 1) (zipWith (-) network (map (layerMap (*eps)) (backpropagation network (dataset !! fromIntegral rand))) )
-                             | otherwise = return network
--}
+
 -- 확률적 경사 하강 함수
 sdg eps samples network = foldl' (\net sample -> zipWith (-) net 
         $ map (layerMap (*eps)) 
         $ backpropagation net sample) network samples
-{-
-sdg eps samples network dataset = execState 
-    (mapM_ (\sample -> 
-        modify (\net ->
-            zipWith (-) net . map (layerMap (*eps))
-            . backpropagation net $ dataset !! sample)) samples) network
--}
