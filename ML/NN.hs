@@ -3,6 +3,7 @@ module ML.NN where
 import Data.Matrix
 import ML.Derive
 import qualified Data.Vector as V
+import System.Rsndom
 
 -- 네트워크의 레이어를 정의
 data Layer = Layer (Float -> Float) (Matrix Float) (Matrix Float)
@@ -59,3 +60,5 @@ backpropagation network (x, y) = V.reverse . backpro (V.reverse network) inputs 
 sdg eps dataset samples network = V.foldl' (\net sample -> V.zipWith (-) net 
         $ fmap (layerMap (*eps)) 
         $ backpropagation net (dataset V.! sample)) network samples
+
+sdg2 seed eps dataset samples network = 
