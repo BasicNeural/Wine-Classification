@@ -3,7 +3,7 @@ module ML.NN where
 import Data.Matrix
 import ML.Derive
 import qualified Data.Vector as V
-import System.Rsndom
+import System.Random
 
 -- 네트워크의 레이어를 정의
 data Layer = Layer (Float -> Float) (Matrix Float) (Matrix Float)
@@ -36,29 +36,39 @@ logistic d y = - d * log y - (1 - d) * log (1 - y)
 
 -- 역전파 미분 함수
 backpropagation network (x, y) = V.reverse . backpro (V.reverse network) inputs $ executeLayer network x - y
-  where inputs = V.foldl' (\x layer -> execute (V.head x) layer `V.cons` x ) (V.singleton x) $ V.init network
-        backpro layer' input' delta = 
-          (Layer active (delta * transpose input) delta) 
-            `V.cons` backpro' layers inputs (transpose synapse * delta)
-          where input  = V.head input'
-                inputs = V.tail input'
-                (Layer active synapse bias) = V.head layer'
-                layers = V.tail layer'
-                backpro' layer' input' delta =
-                  (Layer active (newDelta * transpose input) newDelta)
-                    `V.cons` if inputs == V.empty 
-                      then V.empty
-                      else backpro' layers inputs (transpose synapse * newDelta)
-                  where input  = V.head input'
-                        inputs = V.tail input'
-                        (Layer active synapse bias) = V.head layer'
-                        layers = V.tail layer'
-                        newDelta = colVector . V.zipWith (*) (getMatrixAsVector delta)
-                          $ getMatrixAsVector (fmap (derive active) $ synapse * input + bias)
+  where
+    inputs = V.foldl' (\x layer -> execute (V.head x) layer `V.cons` x ) (V.singleton x) $ V.init network
+    backpro layer' input' delta = 
+      (Layer active (delta * transpose input) delta) 
+        `V.cons` backpro' layers inputs (transpose synapse * delta)
+      where
+        input  = V.head input'
+        inputs = V.tail input'
+        (Layer active synapse bias) = V.head layer'
+        layers = V.tail layer'
+        backpro' layer' input' delta =
+          (Layer active (newDelta * transpose input) newDelta)
+            `V.cons` if inputs == V.empty 
+              then V.empty
+              else backpro' layers inputs (transpose synapse * newDelta)
+          where
+            input  = V.head input'
+            inputs = V.tail input'
+            (Layer active synapse bias) = V.head layer'
+            layers = V.tail layer'
+            newDelta = colVector . V.zipWith (*) (getMatrixAsVector delta)
+              $ getMatrixAsVector (fmap (derive active) $ synapse * input + bias)
 
 -- 확률적 경사 하강 함수
 sdg eps dataset samples network = V.foldl' (\net sample -> V.zipWith (-) net 
         $ fmap (layerMap (*eps)) 
         $ backpropagation net (dataset V.! sample)) network samples
 
-sdg2 seed eps dataset samples network = 
+sdg2 seed eps step dataset network = sdg' step network seed
+  where
+    len = length dataset - 1
+    sdg' 0    net _   = net
+    sdg' step net gen = sdg' (step - 1)
+      (V.zipWith (-) net $ fmap (layerMap (*eps))
+      $ backpropagation net $ dataset V.! idx) $! newGen
+      where (idx, newGen) = randomR (0, len) gen
